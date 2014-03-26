@@ -20,7 +20,7 @@ If A and B both remain silent
 """
 
 import random
-
+import itertools
 
 REWARD = 3
 SUCKER = 0
@@ -53,6 +53,7 @@ class Prisoner(object):
         elif strategy == "pavlov" :
             self.strategy = self.pavlov
         else:
+            print "DEBUG : strategy = ", strategy
             self.strategy = self.human # easier to debug 
 
     @classmethod
@@ -116,15 +117,15 @@ class Prisoner(object):
         switch strategies if you were punished on the previous move
         """
         if not history: # empty list 
-            self.strategy = "cooperate" # initiate
-            return self.strategy
+            self.defaultstrategy = "cooperate" # initiate
+            return self.defaultstrategy
             
-        elif history[-1] in (1 or 5):
-            if self.strategy == "cooperate": 
-                self.strategy = "defect"
+        elif history[-1] in (1, 5):
+            if self.defaultstrategy == "cooperate": 
+                self.defaultstrategy = "defect"
             else:
-                self.strategy = "cooperate" 
-        return self.strategy
+                self.defaultstrategy = "cooperate" 
+        return self.defaultstrategy
 
 
 
@@ -145,7 +146,7 @@ class Game(object):
         prisoner_b = Prisoner("B", strategy_b)
         return cls(prisoner_a, prisoner_b)
 
-    def play(self, moves): # add parameters of the game
+    def play(self, moves=1): # add parameters of the game
         """Play x times"""
         for _ in xrange(0, moves):
             self.play_a_move()
@@ -156,8 +157,6 @@ class Game(object):
         """
         self.move_id += 1
         # we give the history of the adversary
-        print self.prisoner_a.name
-        print self.prisoner_a.strategy
         action_a = self.prisoner_a.strategy(self.move_id, self.data['B'])
         action_b = self.prisoner_b.strategy(self.move_id, self.data['A'])
 
@@ -190,7 +189,7 @@ class Game(object):
 def test():
     """Test the game engine
     """
-    prisoner_a = Prisoner("A", "cooperate()")
+    prisoner_a = Prisoner("A", "cooperate")
     prisoner_b = Prisoner("B", "grim")
     game = Game(prisoner_a, prisoner_b)
     game.play(10)
@@ -199,21 +198,43 @@ def test():
     assert(game.data['B']==[3, 3, 3, 3, 3, 3, 3, 3, 3])
 
 
+def robintournement(*strategies):
+    data = []
+    players = []
+    for index, strategy in enumerate(strategies):
+        players.append(Prisoner(strategy, strategy)) # one for the name, one for the function
+    games = itertools.combinations_with_replacement(players, 2)
+    for player_a, player_b in games:
+        game = Game(player_a, player_b)
+
+        print "A = ", game.prisoner_a.strategy
+        print "B = ", game.prisoner_b.strategy
+        game.play(1000)
+        print "Result A = ", sum(game.data['A'])
+        print "Result B = ", sum(game.data['B'])
+
+        data.append({"player_a": player_a.name, "player_b": player_b.name, "data": game.data})
+    return data
 
 def main():
     """ We give the choice of what to do 
     Humans player or strategy tests
     """
-    a = Prisoner("A", "grim")
-    b = Prisoner("B", "random")
-    game = Game.fromstrategy(a, b)
+    strategies = ["cooperate", "defect", "random", "titfortat", "grim", "pavlov"]
+    result = robintournement(*strategies)
 
-    print "A = ", game.prisoner_a.strategy
-    print "B = ", game.prisoner_b.strategy
-    game.play(1000)
-    print "Result A = ", sum(game.data['A'])
-    print "Result B = ", sum(game.data['B'])
+    strategies_dict = {}
+    # TODO add the result of the player_b. Change the data to something more playable
+    for game in result:
+        if game['player_a'] not in strategies_dict:
+            strategies_dict[game['player_a']] = 0
 
+        strategies_dict[game['player_a']] += sum(game['data']['A'])
+    
+    for strategy in strategies:
+        print strategy, strategies_dict[strategy]
+    #for game in result:
+    
 if __name__ == '__main__':
     #test()
     main()
