@@ -21,6 +21,10 @@ If A and B both remain silent
 
 import random
 import itertools
+import csv
+from sklearn import svm, linear_model
+from sklearn.linear_model import SGDClassifier, SGDRegressor
+import sys
 
 REWARD = 3
 SUCKER = 0
@@ -52,6 +56,8 @@ class Prisoner(object):
             self.strategy = self.grim
         elif strategy == "pavlov" :
             self.strategy = self.pavlov
+        elif strategy == "machinelearning" :
+            self.strategy = self.machinelearning
         else:
             print "DEBUG : strategy = ", strategy
             self.strategy = self.human # easier to debug 
@@ -127,8 +133,40 @@ class Prisoner(object):
                 self.defaultstrategy = "cooperate" 
         return self.defaultstrategy
 
+    def machinelearning(self, move_id, history):
+        """implement the simplest ML algorithm possible"""
+        sizeoffunction = 5
+        if len(history)<=sizeoffunction*20: # 100 moves
+            return self.random()
+        else:
+            # 1 for "cooperate", -1 for "defect"
+            # print history
+            myactionshistory = [(1 if (res==0 or res==3) else -1) for res in history]
+            # print action_history
+            X = []
+            y = []
+            for v in range(len(history)-sizeoffunction+1):
+                X.append(myactionshistory[0+v:sizeoffunction+v])
+                y.append(sum(history[0+v:sizeoffunction+v])) # TODO : sizeoffunction OR NOT
 
+            clf = linear_model.SGDRegressor(warm_start=False) #False for now
+            clf.fit(X,y) # We restart at 0 every time : stupid !
 
+            
+            # Returns the probability of the sample for each class in the model. 
+            # The columns correspond to the classes in sorted order
+            # as they appear in the attribute classes_.
+            defect =  myactionshistory[-sizeoffunction+1:]
+            defect.append(-1)
+            cooperate = myactionshistory[-sizeoffunction+1:]
+            cooperate.append(1)
+            movedefect= clf.predict(defect)
+            movecooperate = clf.predict(cooperate)
+                
+            if movedefect > movecooperate:
+                return "defect"
+            else:
+                return "cooperate"
 
 class Game(object):
     """docstring for Game"""
@@ -198,43 +236,67 @@ def test():
     assert(game.data['B']==[3, 3, 3, 3, 3, 3, 3, 3, 3])
 
 
-def robintournement(*strategies):
+def robintournement(numberofgames=1000, *strategies):
+    """Round-robin tournament : Every strategy play against all other
+    Including itself.
+    The return is a flat data, with the name of the 'player', the adversary
+    and the data/result of the player
+    To only fight strategy1 vs strategy1, just do strategies = ["strategy1"]
+    OR strategies = ["strategy1","strategy1"], with_replacement=True
+    """
     data = []
     players = []
+
+    header = ["player1", "player2"]
+    header.extend(range(1,numberofgames+1))
+    data.append(header)
+
     for index, strategy in enumerate(strategies):
         players.append(Prisoner(strategy, strategy)) # one for the name, one for the function
-    games = itertools.combinations_with_replacement(players, 2)
+    
+    
+    # We decide if we play a strategy against itself
+    with_replacement=True # To add it as a parameter
+    if with_replacement:
+        games = itertools.combinations_with_replacement(players, 2)
+    else:
+        games = itertools.combinations(players, 2)
+
+
     for player_a, player_b in games:
         game = Game(player_a, player_b)
 
         print "A = ", game.prisoner_a.strategy
         print "B = ", game.prisoner_b.strategy
-        game.play(1000)
+        game.play(numberofgames)
         print "Result A = ", sum(game.data['A'])
         print "Result B = ", sum(game.data['B'])
 
-        data.append({"player_a": player_a.name, "player_b": player_b.name, "data": game.data})
+        gamebya = [player_a.name, player_b.name]
+        gamebya.extend(game.data['A'])
+        gamebyb = [player_b.name, player_a.name]
+        gamebyb.extend(game.data['B'])
+        data.append(gamebya) # We append the data of player_a
+        data.append(gamebyb) # We append the data of player_b
     return data
 
-def main():
+def tocsv(data, name="prisoner.csv"):
+    with open(name, "wb") as f:
+        writer = csv.writer(f)
+        writer.writerows(data)
+    print "Data exported to CSV"
+
+
+def main(argv="output.csv"):
     """ We give the choice of what to do 
     Humans player or strategy tests
     """
-    strategies = ["cooperate", "defect", "random", "titfortat", "grim", "pavlov"]
-    result = robintournement(*strategies)
+    #strategies = ["cooperate", "defect", "random", "titfortat", "grim", "pavlov"]
 
-    strategies_dict = {}
-    # TODO add the result of the player_b. Change the data to something more playable
-    for game in result:
-        if game['player_a'] not in strategies_dict:
-            strategies_dict[game['player_a']] = 0
+    strategies = ["machinelearning"] 
+    result = robintournement(1000, *strategies)
+    tocsv(result, argv)
 
-        strategies_dict[game['player_a']] += sum(game['data']['A'])
-    
-    for strategy in strategies:
-        print strategy, strategies_dict[strategy]
-    #for game in result:
-    
 if __name__ == '__main__':
-    #test()
-    main()
+    # test()
+    main(sys.argv[1])
