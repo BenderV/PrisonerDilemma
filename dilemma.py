@@ -40,6 +40,7 @@ class Prisoner(object):
         # The variable for the strategies
         self.defaultstrategy = "cooperate"
         self.grim = False # we are calm by nature
+        self.ml_sizeoffunction = 5
 
     def setstrategy(self, strategy):
         if strategy == "cooperate" : 
@@ -122,8 +123,8 @@ class Prisoner(object):
         """Cooperate on the first move and on subsequent moves,
         switch strategies if you were punished on the previous move
         """
-        if not history: # empty list 
-            self.defaultstrategy = "cooperate" # initiate
+        if not history: # empty list => initiate
+            self.defaultstrategy = "cooperate"
             return self.defaultstrategy
             
         elif history[-1] in (1, 5):
@@ -135,24 +136,28 @@ class Prisoner(object):
 
     def machinelearning(self, move_id, history):
         """implement the simplest ML algorithm possible"""
-        sizeoffunction = 5
-        if len(history)<=sizeoffunction*20: # 100 moves
+        sizeoffunction = self.ml_sizeoffunction
+        self.clf = linear_model.SGDRegressor(warm_start=False) #False for now
+
+        if not history: # empty list => initiate
+            self.X = []
+            self.y = []
+
+        ### UPDATE
+
+        
+        # Append the last move
+        if len(history) >= sizeoffunction:
+            # 1 for "cooperate", -1 for "defect"
+            myactionshistory = [(1 if (res==0 or res==3) else -1) for res in history]
+            self.X.append(myactionshistory[-sizeoffunction:])
+            self.y.append(sum(history[-1:])) # just the last move
+            self.clf.fit(self.X, self.y) # We make it learning the latest move
+
+        # Fot the first move, we use a random fonction
+        if len(history)<=sizeoffunction*1: # 5*20 moves RANDOM !
             return self.random()
         else:
-            # 1 for "cooperate", -1 for "defect"
-            # print history
-            myactionshistory = [(1 if (res==0 or res==3) else -1) for res in history]
-            # print action_history
-            X = []
-            y = []
-            for v in range(len(history)-sizeoffunction+1):
-                X.append(myactionshistory[0+v:sizeoffunction+v])
-                y.append(sum(history[0+v:sizeoffunction+v])) # TODO : sizeoffunction OR NOT
-
-            clf = linear_model.SGDRegressor(warm_start=False) #False for now
-            clf.fit(X,y) # We restart at 0 every time : stupid !
-
-            
             # Returns the probability of the sample for each class in the model. 
             # The columns correspond to the classes in sorted order
             # as they appear in the attribute classes_.
@@ -160,9 +165,12 @@ class Prisoner(object):
             defect.append(-1)
             cooperate = myactionshistory[-sizeoffunction+1:]
             cooperate.append(1)
-            movedefect= clf.predict(defect)
-            movecooperate = clf.predict(cooperate)
-                
+            movedefect= self.clf.predict(defect)
+            movecooperate = self.clf.predict(cooperate)
+            #print defect, movedefect
+            #print cooperate, movecooperate
+            #ben = raw_input("fuck")
+
             if movedefect > movecooperate:
                 return "defect"
             else:
@@ -256,11 +264,7 @@ def robintournement(numberofgames=1000, *strategies):
     
     
     # We decide if we play a strategy against itself
-    with_replacement=True # To add it as a parameter
-    if with_replacement:
-        games = itertools.combinations_with_replacement(players, 2)
-    else:
-        games = itertools.combinations(players, 2)
+    games = itertools.combinations(players, 2)
 
 
     for player_a, player_b in games:
@@ -280,7 +284,7 @@ def robintournement(numberofgames=1000, *strategies):
         data.append(gamebyb) # We append the data of player_b
     return data
 
-def tocsv(data, name="prisoner.csv"):
+def tocsv(data, name="default.csv"):
     with open(name, "wb") as f:
         writer = csv.writer(f)
         writer.writerows(data)
@@ -293,7 +297,7 @@ def main(argv="output.csv"):
     """
     #strategies = ["cooperate", "defect", "random", "titfortat", "grim", "pavlov"]
 
-    strategies = ["machinelearning"] 
+    strategies = ["machinelearning", "titfortat"] 
     result = robintournement(1000, *strategies)
     tocsv(result, argv)
 
