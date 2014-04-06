@@ -1,0 +1,7 @@
+from cooperateplayer import CooperatePlayer
+from defectplayer import DefectPlayer
+from grimplayer import GrimPlayer
+from pavlovplayer import PavlovPlayer
+from randomplayer import RandomPrisonerPlayer
+from titfortatplayer import TitForTatPlayer
+from reinforcementlearningplayer import ReinforcementLearningPlayer

@@ -244,13 +244,12 @@ def test():
     assert(game.data['B']==[3, 3, 3, 3, 3, 3, 3, 3, 3])
 
 
-def robintournement(numberofgames=1000, *strategies):
+def robintournament(numberofgames=1000, *strategies):
     """Round-robin tournament : Every strategy play against all other
     Including itself.
     The return is a flat data, with the name of the 'player', the adversary
     and the data/result of the player
-    To only fight strategy1 vs strategy1, just do strategies = ["strategy1"]
-    OR strategies = ["strategy1","strategy1"], with_replacement=True
+    To only fight strategy1 vs strategy1, just do strategies ="strategy1","strategy1"]
     """
     data = []
     players = []
