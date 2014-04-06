@@ -31,6 +31,10 @@ class ReinforcementLearningPlayer(RandomPrisonerPlayer):
             b = raw_input("pause IA !!")
             return [self.color, 'cooperate']
 
+    def integrateObservation(data):
+        # We don't use that
+        self.data = data
+
     def giveReward(self, r):
         """ Reward or punish the agent.
             :key r: reward, if C{r} is positive, punishment if C{r} is negative

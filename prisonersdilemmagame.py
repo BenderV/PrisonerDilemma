@@ -3,10 +3,10 @@ __author__ = 'Benjamin Derville, benjamin.derville@gmail.com'
 from random import choice
 from scipy import zeros
 
-#from pybrain.rl.environments.twoplayergames.twoplayergame import TwoPlayerGame
+from pybrain.rl.environments.twoplayergames.twoplayergame import TwoPlayerGame
 from twoplayergame import SimultaneousTwoPlayerGame
 
-class PrisonersDilemmaGame(SimultaneousTwoPlayerGame):
+class PrisonersDilemmaGame(TwoPlayerGame):
     """Prisoners Dilemma 
 
     Two members of a criminal gang are arrested and imprisoned. 
@@ -41,7 +41,7 @@ class PrisonersDilemmaGame(SimultaneousTwoPlayerGame):
 
     def reset(self):
         """ empty history, records. (reset TwoPlayerGame) """
-        SimultaneousTwoPlayerGame.reset(self)
+        TwoPlayerGame.reset(self)
         self.data = {'id': [], 'W': [], 'B': []}
         self.movesDone = 0
 
@@ -77,6 +77,16 @@ class PrisonersDilemmaGame(SimultaneousTwoPlayerGame):
 
     def isLegal(self, action):
         return True
+
+
+    def performAction(self, action):
+        if not self.lastplayer: # The first to play this move
+            self.lastplayer = action[0]
+            self.actionB = action[1]
+        else:
+            self.actionW = action[1]
+        self.lastplayer = None
+        self.doMove(actionB, "cooperate")
 
     def doMove(self, actionB, actionW):
         """ action is a tuple (color, move)

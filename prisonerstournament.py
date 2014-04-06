@@ -8,7 +8,7 @@ __author__ = 'Benjamin Derville, benjamin.derville@gmail.com'
 from prisonersdilemmagame import PrisonersDilemmaGame
 from prisonersplayers import RandomPrisonerPlayer, GrimPlayer, ReinforcementLearningPlayer
 from robintournament import RobinTournament
-
+from prisonerstask import PrisonersTask
 from pybrain.tools.shortcuts import buildNetwork
 from pybrain import SigmoidLayer
 
@@ -16,7 +16,7 @@ from pybrain.rl.learners.valuebased import ActionValueTable
 from pybrain.rl.learners import Q
 from pybrain.rl.experiments import Experiment
 from pybrain.rl.explorers import EpsilonGreedyExplorer
-
+from pybrain.rl.agents import LearningAgent
 
 game = PrisonersDilemmaGame()
 randAgent = RandomPrisonerPlayer(game, name = 'rand')
@@ -26,12 +26,12 @@ grimAgent = GrimPlayer(game, name="grimy")
 net = buildNetwork(game.indim, game.outdim, outclass = SigmoidLayer)
 netAgent = ReinforcementLearningPlayer(net, game, name = 'net')
 
-agents = [randAgent, netAgent]
-print 'Starting tournament...'
-tourn = RobinTournament(game, agents)
-tourn.organize(1) # we play only one game
-print tourn
-print game.data
+# agents = [randAgent, netAgent]
+# print 'Starting tournament...'
+# tourn = RobinTournament(game, agents)
+# tourn.organize(1) # we play only one game
+# print tourn
+# print game.data
 
 
 
@@ -46,9 +46,9 @@ agent = LearningAgent(av_table, learner)
 # define the environmment
 env = PrisonersDilemmaGame()
 # # define the task
-# ...
+task = PrisonersTask(env)
 # # finally, define experiment
-# experiment = Experiment(task, agent)
+experiment = Experiment(task, agent)
 
 # ready to go, start the process
 while True:

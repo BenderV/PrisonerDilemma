@@ -21,8 +21,7 @@ class PrisonersTask(Task):
         
     def getObservation(self):
         """ A filtered mapping to getSample of the underlying environment. """
-        sensors = self.env.getSensors()
-        return sensors
+        return self.env.data
     
     def getReward(self):
         """ Compute and return the current reward (i.e. corresponding to the last action performed) """
