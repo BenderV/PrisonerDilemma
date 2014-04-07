@@ -14,7 +14,7 @@ from pybrain import SigmoidLayer
 
 from pybrain.rl.learners.valuebased import ActionValueTable
 from pybrain.rl.learners import Q
-from pybrain.rl.experiments import Experiment
+from pybrain.rl.experiments import Experiment, ContinuousExperiment
 from pybrain.rl.explorers import EpsilonGreedyExplorer
 from pybrain.rl.agents import LearningAgent
 
@@ -23,8 +23,8 @@ randAgent = RandomPrisonerPlayer(game, name = 'rand')
 grimAgent = GrimPlayer(game, name="grimy")
 
 # the network's outputs are probabilities of choosing the action, thus a sigmoid output layer
-net = buildNetwork(game.indim, game.outdim, outclass = SigmoidLayer)
-netAgent = ReinforcementLearningPlayer(net, game, name = 'net')
+#net = buildNetwork(game.indim, game.outdim, outclass = SigmoidLayer)
+#netAgent = ReinforcementLearningPlayer(net, game, name = 'net')
 
 # agents = [randAgent, netAgent]
 # print 'Starting tournament...'
@@ -34,26 +34,40 @@ netAgent = ReinforcementLearningPlayer(net, game, name = 'net')
 # print game.data
 
 
-
 # define action-value table
 av_table = ActionValueTable(32, 2)
 av_table.initialize(0.)
 # define Q-learning agent
 learner = Q(0.5, 0.0)
 learner._setExplorer(EpsilonGreedyExplorer(0.0))
-agent = LearningAgent(av_table, learner)
+agent1 = ReinforcementLearningPlayer(av_table, learner)
+agent2 = ReinforcementLearningPlayer(av_table, learner)
 
-# define the environmment
+
+# define the environmment (one for both)
 env = PrisonersDilemmaGame()
-# # define the task
+# # define the task (the same here)
 task = PrisonersTask(env)
-# # finally, define experiment
-experiment = Experiment(task, agent)
 
+
+""" We don't, we are doing by hand for now
+# # finally, define experiment
+# experiment = ContinuousExperiment(task, agent)
+"""
+
+agent1.color = env.startcolor
+agent2.color = -agent1.color
 # ready to go, start the process
 while True:
-    experiment.doInteractions(1)
-    agent.learn()
-    agent.reset()
-
-
+    # experiment.doInteractionsAndLearn(1)
+    agent1.integrateObservation(task.getObservation(agent1.color))
+    agent2.integrateObservation(task.getObservation(agent2.color))
+    """self.task1.performAction(self.agent1.getAction())
+    self.task2.performAction(self.agent2.getAction())
+    Replace by """
+    env.performActions(agent1.getAction(), agent2.getAction())
+    # Do the processing in the agent !
+    agent1.giveReward(task.getReward(agent1.color))
+    agent2.giveReward(task.getReward(agent2.color))
+    agent1.learn()
+    agent2.learn()

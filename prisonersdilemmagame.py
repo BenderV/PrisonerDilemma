@@ -88,6 +88,10 @@ class PrisonersDilemmaGame(TwoPlayerGame):
         self.lastplayer = None
         self.doMove(actionB, "cooperate")
 
+    def performActions(self, actionB, actionW):
+        self.doMove(actionB, actionW)
+        return True
+
     def doMove(self, actionB, actionW):
         """ action is a tuple (color, move)
             move is the action of the agent (defect or cooperate)

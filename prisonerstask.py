@@ -19,18 +19,19 @@ class PrisonersTask(Task):
         """ A filtered mapping towards performAction of the underlying environment. """                
         self.env.performAction(action)
         
-    def getObservation(self):
+    def getObservation(self, color):
         """ A filtered mapping to getSample of the underlying environment. """
-        return self.env.data
-    
-    def getReward(self):
+        if color == self.env.BLACK:
+            return self.env.data['B'][-5:]
+        else:
+            return self.env.data['W'][-5:]
+
+    def getReward(self, color):
         """ Compute and return the current reward (i.e. corresponding to the last action performed) """
-        reward = raw_input("Enter reward: ")
-        
-        # retrieve last reward, and save current given reward
+        history = self.env.getHistory(color)
+        reward = sum(history[-1:])
         cur_reward = self.lastreward
         self.lastreward = reward
-    
         return cur_reward
 
     @property
