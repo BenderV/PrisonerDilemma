@@ -35,7 +35,7 @@ grimAgent = GrimPlayer(game, name="grimy")
 
 
 # define action-value table
-av_table = ActionValueTable(32, 2)
+av_table = ActionValueTable(5, 2)
 av_table.initialize(0.)
 # define Q-learning agent
 learner = Q(0.5, 0.0)
