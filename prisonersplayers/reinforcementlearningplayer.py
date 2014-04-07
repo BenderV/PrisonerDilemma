@@ -18,6 +18,7 @@ class ReinforcementLearningPlayer(LearningAgent, RandomPrisonerPlayer):
         if not history:
             return [self.color, choice(['cooperate','defect'])]
         elif len(history)<5:
+            self.lastaction = 1.0
             return [self.color, choice(['cooperate','defect'])]
         else:
             myactionshistory = [(0 if (res==0 or res==3) else 2) for res in history]
@@ -35,5 +36,7 @@ class ReinforcementLearningPlayer(LearningAgent, RandomPrisonerPlayer):
             super(LearningAgent, self).getAction()
 
     def integrateObservation(self, data):
-        # We don't use that
-        self.history = data
+        self.history = data        
+        self.lastobs = '8'
+        self.lastaction = None
+        self.lastreward = None
