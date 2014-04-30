@@ -26,6 +26,7 @@ from sklearn import svm, linear_model
 from sklearn.linear_model import SGDClassifier, SGDRegressor
 import sys
 import numpy as np
+import math
 # Pybrain import
 from pybrain.rl.learners.valuebased import ActionValueTable
 from pybrain.rl.learners import Q
@@ -55,7 +56,7 @@ class Prisoner(object):
         self.pybrain()
 
     def pybrain(self):
-        av_table = ActionValueTable(3, 2)
+        av_table = ActionValueTable(32, 2)
         av_table.initialize(0.)
         # define Q-learning agent
         learner = Q(0.5, 0.0)
@@ -163,19 +164,16 @@ class Prisoner(object):
         
         ### UPDATE
         if len(history) >= sizeoffunction:
-            # 1 for "cooperate", -1 for "defect"
-            myactionshistory = [(1 if (res==0 or res==3) else -1) for res in history]
+            # 2 for "cooperate", 0 for "defect"
+            myactionshistory = [(2 if (res==0 or res==3) else 0) for res in history]
 
         # Fot the first move, we use a random fonction
         if len(history)<=sizeoffunction*1: # 5*1 moves RANDOM !
             return self.random()
         else:
-            print self.agent.indim
-            ben = raw_input("..................");
-            self.agent.integrateObservation(np.array(myactionshistory[-6:], dtype='f')) # remettre 5...
-            print self.agent.lastobs
+            obs = sum(map(math.pow, myactionshistory[-5:-1], [1,2,3,4]) + [myactionshistory[0]/2])
+            self.agent.integrateObservation(np.array([obs], dtype='f')) # de 0 a 4
             action = self.agent.getAction()
-            print "action : ", action
             self.agent.giveReward(sum(history[-1:]))
 
             self.agent.learn()
@@ -307,7 +305,7 @@ def main(argv="output.csv"):
     #strategies = ["cooperate", "defect", "random", "titfortat", "grim", "pavlov"]
 
     strategies = ["machinelearning", "titfortat"] 
-    result = robintournement(1000, *strategies)
+    result = robintournement(2000, *strategies)
     tocsv(result, argv)
 
 if __name__ == '__main__':
