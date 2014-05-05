@@ -22,20 +22,12 @@ If A and B both remain silent
 import random
 import itertools
 import csv
-from sklearn import svm, linear_model
-from sklearn.linear_model import SGDClassifier, SGDRegressor
 import sys
 import numpy as np
 import math
-# Pybrain import
-from pybrain.rl.learners.valuebased import ActionValueTable
-from pybrain.rl.learners import Q
-from pybrain.rl.experiments import Experiment, ContinuousExperiment
-from pybrain.rl.explorers import EpsilonGreedyExplorer
-from pybrain.rl.agents import LearningAgent
-
-
-
+import matplotlib.pyplot as plt
+# RLPy import
+from MDPSolvers.MDPSolver import MDPSolver
 
 
 REWARD = 3
@@ -56,12 +48,14 @@ class Prisoner(object):
         self.pybrain()
 
     def pybrain(self):
-        av_table = ActionValueTable(32, 2)
-        av_table.initialize(0.)
+        #av_table = ActionValueTable(32, 2)
+        #av_table.initialize(0.)
+        module = LinearLayer(5)
+
         # define Q-learning agent
         learner = Q(0.5, 0.0)
         learner._setExplorer(EpsilonGreedyExplorer(0.0))
-        self.agent = LearningAgent(av_table, learner)
+        self.agent = LearningAgent(module, learner)
 
     def setstrategy(self, strategy):
         if strategy == "cooperate" : 
@@ -171,8 +165,9 @@ class Prisoner(object):
         if len(history)<=sizeoffunction*1: # 5*1 moves RANDOM !
             return self.random()
         else:
-            obs = sum(map(math.pow, myactionshistory[-5:-1], [1,2,3,4]) + [myactionshistory[0]/2])
-            self.agent.integrateObservation(np.array([obs], dtype='f')) # de 0 a 4
+            obs = map(math.pow, myactionshistory[-5:-1], [1,2,3,4]) + [myactionshistory[0]/2]
+            print np.array(myactionshistory[-5:], dtype='f')
+            self.agent.integrateObservation(np.array(myactionshistory[-5:], dtype='f')) # de 0 a 4 asarray([npint])
             action = self.agent.getAction()
             self.agent.giveReward(sum(history[-1:]))
 
@@ -298,15 +293,21 @@ def tocsv(data, name="default.csv"):
     print "Data exported to CSV"
 
 
+def display(data):
+    plt.plot(data,'r')
+    plt.show()
+
 def main(argv="output.csv"):
     """ We give the choice of what to do 
     Humans player or strategy tests
     """
     #strategies = ["cooperate", "defect", "random", "titfortat", "grim", "pavlov"]
 
-    strategies = ["machinelearning", "titfortat"] 
-    result = robintournement(2000, *strategies)
+    strategies = ["machinelearning", "grim"] 
+    result = robintournement(500, *strategies)
     tocsv(result, argv)
+    print result[1][0:500]
+    display(result[1][2:])
 
 if __name__ == '__main__':
     # test()
