@@ -27,6 +27,7 @@ from sklearn.linear_model import SGDClassifier, SGDRegressor
 import sys
 import numpy as np
 import math
+import matplotlib.pyplot as plt
 
 REWARD = 3
 SUCKER = 0
@@ -293,16 +294,19 @@ def tocsv(data, name="default.csv"):
         writer.writerows(data)
     print "Data exported to CSV"
 
+def display(data):
+    plt.plot(data,'r')
+    plt.show()
 
 def main(argv="output.csv"):
     """ We give the choice of what to do 
     Humans player or strategy tests
     """
     #strategies = ["cooperate", "defect", "random", "titfortat", "grim", "pavlov"]
-
     strategies = ["machinelearning", "titfortat"] 
     result = robintournement(2000, *strategies)
     tocsv(result, argv)
+    display(result[1][2:])
 
 if __name__ == '__main__':
     # test()
