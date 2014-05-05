@@ -27,16 +27,6 @@ from sklearn.linear_model import SGDClassifier, SGDRegressor
 import sys
 import numpy as np
 import math
-# Pybrain import
-from pybrain.rl.learners.valuebased import ActionValueTable
-from pybrain.rl.learners import Q
-from pybrain.rl.experiments import Experiment, ContinuousExperiment
-from pybrain.rl.explorers import EpsilonGreedyExplorer
-from pybrain.rl.agents import LearningAgent
-
-
-
-
 
 REWARD = 3
 SUCKER = 0
@@ -53,15 +43,7 @@ class Prisoner(object):
         self.defaultstrategy = "cooperate"
         self.grim = False # we are calm by nature
         self.ml_sizeoffunction = 5
-        self.pybrain()
 
-    def pybrain(self):
-        av_table = ActionValueTable(32, 2)
-        av_table.initialize(0.)
-        # define Q-learning agent
-        learner = Q(0.5, 0.0)
-        learner._setExplorer(EpsilonGreedyExplorer(0.0))
-        self.agent = LearningAgent(av_table, learner)
 
     def setstrategy(self, strategy):
         if strategy == "cooperate" : 
@@ -158,30 +140,44 @@ class Prisoner(object):
     def machinelearning(self, move_id, history):
         """implement the simplest ML algorithm possible"""
         sizeoffunction = self.ml_sizeoffunction
+        self.clf = linear_model.SGDRegressor(warm_start=False) #False for now
 
         if not history: # empty list => initiate
-            pass
-        
+            self.X = []
+            self.y = []
+
         ### UPDATE
+
+        
+        # Append the last move
         if len(history) >= sizeoffunction:
-            # 2 for "cooperate", 0 for "defect"
-            myactionshistory = [(2 if (res==0 or res==3) else 0) for res in history]
+            # 1 for "cooperate", -1 for "defect"
+            myactionshistory = [(1 if (res==0 or res==3) else -1) for res in history]
+            self.X.append(myactionshistory[-sizeoffunction:])
+            self.y.append(sum(history[-1:])) # just the last move
+            self.clf.fit(self.X, self.y) # We make it learning the latest move
 
         # Fot the first move, we use a random fonction
-        if len(history)<=sizeoffunction*1: # 5*1 moves RANDOM !
+        if len(history)<=sizeoffunction*1: # 5*20 moves RANDOM !
             return self.random()
         else:
-            obs = sum(map(math.pow, myactionshistory[-5:-1], [1,2,3,4]) + [myactionshistory[0]/2])
-            self.agent.integrateObservation(np.array([obs], dtype='f')) # de 0 a 4
-            action = self.agent.getAction()
-            self.agent.giveReward(sum(history[-1:]))
+            # Returns the probability of the sample for each class in the model. 
+            # The columns correspond to the classes in sorted order
+            # as they appear in the attribute classes_.
+            defect =  myactionshistory[-sizeoffunction+1:]
+            defect.append(-1)
+            cooperate = myactionshistory[-sizeoffunction+1:]
+            cooperate.append(1)
+            movedefect= self.clf.predict(defect)
+            movecooperate = self.clf.predict(cooperate)
+            #print defect, movedefect
+            #print cooperate, movecooperate
+            #ben = raw_input("fuck")
 
-            self.agent.learn()
-
-            if action > 0.99:
-                return "cooperate"
-            else:
+            if movedefect > movecooperate:
                 return "defect"
+            else:
+                return "cooperate"
 
 class Game(object):
     """docstring for Game"""
