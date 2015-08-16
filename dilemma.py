@@ -19,6 +19,10 @@ If A and B both remain silent
     both of them will only serve 1 year in prison
 """
 
+"""
+Next objectif, with Qlearning, refind the reward with titfortat
+"""
+
 import random
 import itertools
 import csv
@@ -27,95 +31,123 @@ from sklearn.linear_model import SGDClassifier, SGDRegressor
 import sys
 import numpy as np
 import math
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 
-REWARD = 3
+REWARD = 4 # put 4 here?
 SUCKER = 0
 TEMPTATION = 5
 PENALTY = 1
+
+
+STATES = [('defect'), ('cooperate')] # with a history of one => what we played
+ACTIONS = [('defect'), ('cooperate')] # cooperate or defect
+
+def unexp(x):
+   return math.exp(-x)
+
+ 
+class QLearning(object):
+    """docstring for QLearning"""
+    def __init__(self):
+      super(QLearning, self).__init__()
+      self.values = {}
+      self.lrate = 0.4 # step size, for now, we always learn a bit on everything.
+      self.gamma = 0 # discount factor
+      self.id = 0 
+
+      # initialization
+      for action in ACTIONS:
+          for state in STATES:
+              self.values[state, action] = 0.5
+
+    def learn(self, state, action, reward):
+        old_value = self.values[state, action]
+        lrate = self.lrate
+
+        qmax = max([self.values[action, a] for a in ACTIONS]) # just because new_state = action
+        
+        new_value = old_value + lrate * (reward + self.gamma * qmax  - old_value)
+        self.values[state, action] = new_value
+
+
+    def choose(self, state, actions):
+        if not state: # if we don't have any state, randomly do an action.
+            return random.choice(actions)
+
+        self.id += 1
+        if random.random > 0.1 and self.id < 1000:
+            return random.choice(actions)
+
+        action_max_value = - 10000
+        action_max = 'default'
+
+        for action in actions:
+            predict = self.values[state, action]
+            if predict > action_max_value:
+                action_max = action
+                action_max_value = predict
+
+
+        return action_max
+
+
+
+
 
 
 class Prisoner(object):
     """docstring for Prisoner"""
     def __init__(self, name, strategy = "cooperate"):
         self.name = name
-        self.setstrategy(strategy)
-        # The variable for the strategies
-        self.defaultstrategy = "cooperate"
-        self.grim = False # we are calm by nature
-        self.ml_sizeoffunction = 5
+        self.history = [] # history of action ?
+        self.rewards = []
+
+    def strategy(self, **context):
+        pass
+
+    def punish(self, reward, **context):
+        pass
 
 
-    def setstrategy(self, strategy):
-        if strategy == "cooperate" : 
-            self.strategy = self.cooperate
-        elif strategy == "defect" :
-            self.strategy = self.defect
-        elif strategy == "random" :
-            self.strategy = self.random
-        elif strategy == "human" :
-            self.strategy = self.human
-        elif strategy == "titfortat" :
-            self.strategy = self.titfortat
-        elif strategy == "grim" :
-            self.strategy = self.grim
-        elif strategy == "pavlov" :
-            self.strategy = self.pavlov
-        elif strategy == "machinelearning" :
-            self.strategy = self.machinelearning
-        else:
-            print "DEBUG : strategy = ", strategy
-            self.strategy = self.human # easier to debug 
+class Random(Prisoner):
+    """Cooperate or Defect at random."""
+    def __init__(self, arg):
+        super(Random, self).__init__(arg)
 
-    @classmethod
-    def cooperate(cls, *args):
-        """Always cooperate."""
-        return "cooperate"
-    
-    @classmethod
-    def defect(cls, *args):
-        """Always defect."""
-        return "defect"
-    
-    @classmethod
-    def random(cls, *args):
-        """Cooperate or Defect at random."""
+    def strategy(self, **context):
         if(random.uniform(0, 1) < 0.5):
             return "cooperate"
         else:
             return "defect"
 
-    @classmethod
-    def human(cls, move_id, history):
-        """We ask for the player input."""
-        choice = None
-        option = ['cooperate','defect']
-        while choice not in option:
-            print "move n_", move_id
-            print "history of the adversary : ", history
-            choice = raw_input("Your choice, 'cooperate' or 'defect' ? \n")
-        
-        return choice
+class Cooperate(Prisoner):
+    """Always cooperate."""
+    def __init__(self, arg):
+        super(Cooperate, self).__init__(arg)
+    
+    def strategy(self, **context):
+        return "cooperate"
 
-    @classmethod
-    def titfortat(cls, move_id, history):
-        """Cooperate at first, and play the opponents previous move after."""
-        if move_id == 1:
-            return "cooperate"
-        else:
-            if history[-1] in (0, 3):
-                return "cooperate"
-            else: # if history[-1] == (1 or 5): # or -1  
-                return "defect"
+class Defect(Prisoner):
+    """Always defect."""
+    def __init__(self, arg):
+        super(Defect, self).__init__(arg)
+    
+    def strategy(self, **context):
+        return "defect"
 
-    def grim(self, move_id, history):
-        """Cooperate unless the opponent defects, in which case, defect forever.
-        """
-        if not history: # empty list
-            self.grim = False # initiate
+
+class Grim(Prisoner):
+    """Cooperate unless the opponent defects, in which case, defect forever."""
+    def __init__(self, arg):
+        super(Grim, self).__init__(arg)
+        self.grim = False
+
+    def strategy(self, history, **context):
+        if not history: # empty list    
+            self.grim = False # useful?
             return "cooperate"
-        
-        elif not self.grim :
+        elif not self.grim:
             if history[-1] in (1, 5):
                 self.grim = True
                 return "defect"
@@ -123,10 +155,43 @@ class Prisoner(object):
         else:
             return "defect"
 
-    def pavlov(self, move_id, history):
-        """Cooperate on the first move and on subsequent moves,
-        switch strategies if you were punished on the previous move
-        """
+
+class Human(Prisoner):
+    """We ask for the player input."""
+    def __init__(self, arg):
+        super(Human, self).__init__(arg)
+    
+    def strategy(self, move_id, history):
+        choice = None
+        while choice not in ['cooperate','defect']:
+            print("move n_", move_id)
+            print("history of the adversary : ", history)
+            choice = raw_input("Your choice, 'cooperate' or 'defect' ? \n")
+        return choice
+
+
+class Titfortat(Prisoner):
+    """Cooperate at first, and play the opponents previous move after."""
+    def __init__(self, arg):
+        super(Titfortat, self).__init__(arg)
+    
+    def strategy(self, move_id, history):
+        if move_id == 1:
+            return "cooperate"
+        else:
+            if history[-1] in (SUCKER, REWARD):
+                return "cooperate"
+            else: # if history[-1] == (1 or 5): # or -1  
+                return "defect"
+
+
+class Pavlov(Prisoner):
+    """Cooperate on the first move and on subsequent moves,
+    switch strategies if you were punished on the previous move"""
+    def __init__(self, arg):
+        super(Titfortat, self).__init__(arg)
+    
+    def strategy(self, move_id, history):
         if not history: # empty list => initiate
             self.defaultstrategy = "cooperate"
             return self.defaultstrategy
@@ -138,47 +203,25 @@ class Prisoner(object):
                 self.defaultstrategy = "cooperate" 
         return self.defaultstrategy
 
-    def machinelearning(self, move_id, history):
-        """implement the simplest ML algorithm possible"""
-        sizeoffunction = self.ml_sizeoffunction
-        self.clf = linear_model.SGDRegressor(warm_start=False) #False for now
+class MachineLearning(Prisoner):
+    """implement the simplest ML algorithm possible
+    Non iterative version of the game
+    It should learn that he should always defect"""
+    def __init__(self, arg):
+        super(MachineLearning, self).__init__(arg)
+        self.qlearning = QLearning()
+        self.last_action = None
+    
+    def strategy(self, history, **context):
+        action = self.qlearning.choose(state=self.last_action, actions=ACTIONS)
+        return action
 
-        if not history: # empty list => initiate
-            self.X = []
-            self.y = []
-
-        ### UPDATE
-
+    def punish(self, reward, **context):
+        print(self.qlearning.values)
+        if self.last_action:
+            self.qlearning.learn(state=self.last_action, action=context['action'], reward=reward)
+        self.last_action = context['action']
         
-        # Append the last move
-        if len(history) >= sizeoffunction:
-            # 1 for "cooperate", -1 for "defect"
-            myactionshistory = [(1 if (res==0 or res==3) else -1) for res in history]
-            self.X.append(myactionshistory[-sizeoffunction:])
-            self.y.append(sum(history[-1:])) # just the last move
-            self.clf.fit(self.X, self.y) # We make it learning the latest move
-
-        # Fot the first move, we use a random fonction
-        if len(history)<=sizeoffunction*1: # 5*20 moves RANDOM !
-            return self.random()
-        else:
-            # Returns the probability of the sample for each class in the model. 
-            # The columns correspond to the classes in sorted order
-            # as they appear in the attribute classes_.
-            defect =  myactionshistory[-sizeoffunction+1:]
-            defect.append(-1)
-            cooperate = myactionshistory[-sizeoffunction+1:]
-            cooperate.append(1)
-            movedefect= self.clf.predict(defect)
-            movecooperate = self.clf.predict(cooperate)
-            #print defect, movedefect
-            #print cooperate, movecooperate
-            #ben = raw_input("fuck")
-
-            if movedefect > movecooperate:
-                return "defect"
-            else:
-                return "cooperate"
 
 class Game(object):
     """docstring for Game"""
@@ -189,16 +232,14 @@ class Game(object):
         self.move_id = 0
         self.data = {'id': [], 'A': [], 'B': []}
 
-    @classmethod
-    def fromstrategy(cls, strategy_a, strategy_b):
-        "initialize game with the strategy names"
-        prisoner_a = Prisoner("A", strategy_a)
-        prisoner_b = Prisoner("B", strategy_b)
-        return cls(prisoner_a, prisoner_b)
+    def reset_players(self):
+        pass
 
-    def play(self, moves=1): # add parameters of the game
+    def play(self, moves=1, iterated=False): # add parameters of the game
         """Play x times"""
-        for _ in xrange(0, moves):
+        for _ in range(0, moves):
+            if not iterated:
+                self.reset_players()
             self.play_a_move()
 
     def play_a_move(self):
@@ -207,29 +248,28 @@ class Game(object):
         """
         self.move_id += 1
         # we give the history of the adversary
-        action_a = self.prisoner_a.strategy(self.move_id, self.data['B'])
-        action_b = self.prisoner_b.strategy(self.move_id, self.data['A'])
-
-        # print "A = ",action_a, "B = ", action_b
+        action_a = self.prisoner_a.strategy(move_id=self.move_id, history=self.data['B'])
+        action_b = self.prisoner_b.strategy(move_id=self.move_id, history=self.data['A'])
 
         if action_a == action_b == "defect":
-            # self.prisoner_a.punish
             return_a, return_b = PENALTY, PENALTY
-            # print "A & B get 2 years"
         elif action_a == "defect" and action_b == "cooperate":
             return_a = TEMPTATION
             return_b = SUCKER
-            # print "A is free and B get 3 years in prisons"
         elif action_a == "cooperate" and action_b == "defect":
             return_a = SUCKER
             return_b = TEMPTATION
-            # print "B is free and A get 3 years in prisons"
         elif (action_a and action_b) == "cooperate":
             return_a, return_b =  REWARD, REWARD
-            # print "A & B get 1 year"
-        else  :
-            # print "Error, wrong move"
-            return_a, return_b = -1, -1
+        else:
+            assert False # "Error, impossible move"
+
+        # Give rewards/punishment
+        self.prisoner_a.rewards.append(return_a)
+        self.prisoner_b.rewards.append(return_b)
+
+        self.prisoner_a.punish(reward=return_a, action=action_a)
+        self.prisoner_b.punish(reward=return_b, action=action_b)
 
         self.data['id'].append(self.move_id)
         self.data['A'].append(return_a)
@@ -239,15 +279,17 @@ class Game(object):
 def test():
     """Test the game engine
     """
-    prisoner_a = Prisoner("A", "cooperate")
-    prisoner_b = Prisoner("B", "grim")
+    strategies = [MachineLearning, Cooperate, Grim, Human]
+    prisoner_a = MachineLearning("A")
+    prisoner_b = Titfortat("B")
     game = Game(prisoner_a, prisoner_b)
-    game.play(10)
-    print game.data
-    assert(game.data['A']==[3, 3, 3, 3, 3, 3, 3, 3, 3])
-    assert(game.data['B']==[3, 3, 3, 3, 3, 3, 3, 3, 3])
+    game.play(10000)
+    print(game.data['A'])
+    #assert(game.data['A']==[3, 3, 3, 3, 3, 3, 3, 3, 3, 3])
+    #assert(game.data['B']==[3, 3, 3, 3, 3, 3, 3, 3, 3, 3])
 
 
+# Fix later.
 def robintournement(numberofgames=1000, *strategies):
     """Round-robin tournament : Every strategy play against all other
     Including itself.
@@ -274,11 +316,11 @@ def robintournement(numberofgames=1000, *strategies):
     for player_a, player_b in games:
         game = Game(player_a, player_b)
 
-        print "A = ", game.prisoner_a.strategy
-        print "B = ", game.prisoner_b.strategy
+        print("A = ", game.prisoner_a.strategy)
+        print("B = ", game.prisoner_b.strategy)
         game.play(numberofgames)
-        print "Result A = ", sum(game.data['A'])
-        print "Result B = ", sum(game.data['B'])
+        print("Result A = ", sum(game.data['A']))
+        print("Result B = ", sum(game.data['B']))
 
         gamebya = [player_a.name, player_b.name]
         gamebya.extend(game.data['A'])
@@ -292,7 +334,7 @@ def tocsv(data, name="default.csv"):
     with open(name, "wb") as f:
         writer = csv.writer(f)
         writer.writerows(data)
-    print "Data exported to CSV"
+    print("Data exported to CSV")
 
 def display(data):
     plt.plot(data,'r')
@@ -302,11 +344,12 @@ def main(argv="output.csv"):
     """ We give the choice of what to do 
     Humans player or strategy tests
     """
+    test()
     #strategies = ["cooperate", "defect", "random", "titfortat", "grim", "pavlov"]
-    strategies = ["machinelearning", "titfortat"] 
-    result = robintournement(2000, *strategies)
-    tocsv(result, argv)
-    display(result[1][2:])
+    #strategies = ["machinelearning", "titfortat"] 
+    #result = robintournement(2000, *strategies)
+    #tocsv(result, argv)
+    #display(result[1][2:])
 
 if __name__ == '__main__':
     # test()
