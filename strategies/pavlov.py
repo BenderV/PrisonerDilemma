@@ -6,7 +6,7 @@ class Pavlov(Prisoner):
     def __init__(self, arg):
         super(Titfortat, self).__init__(arg)
     
-    def strategy(self, move_id, history):
+    def strategy(self, history):
         if not history: # empty list => initiate
             self.defaultstrategy = "cooperate"
             return self.defaultstrategy

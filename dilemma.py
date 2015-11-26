@@ -27,15 +27,7 @@ import itertools
 import csv
 import numpy as np
 import math
-from strategies import *
-# import matplotlib.pyplot as plt
-
-REWARD = 4 # put 4 here?
-SUCKER = 0
-TEMPTATION = 5
-PENALTY = 1
-
-        
+from strategies import *        
 
 class Game(object):
     """docstring for Game"""
@@ -45,6 +37,11 @@ class Game(object):
         self.prisoner_b = prisoner_b
         self.move_id = 0
         self.data = {'id': [], 'A': [], 'B': []}
+
+        self.REWARD = 4 # put 4 here?
+        self.SUCKER = 0
+        self.TEMPTATION = 5
+        self.PENALTY = 1
 
     def reset_players(self):
         pass
@@ -60,38 +57,36 @@ class Game(object):
         """Execute one iteration of the game
         We ask for strategy and then save the results
         """
-        self.move_id += 1
-        # we give the history of the adversary
-        action_a = self.prisoner_a.strategy(move_id=self.move_id, history=self.data['B'])
-        action_b = self.prisoner_b.strategy(move_id=self.move_id, history=self.data['A'])
+        # The state here is the history of the player results
+        action_a = self.prisoner_a.strategy(state=self.data['A'])
+        action_b = self.prisoner_b.strategy(state=self.data['B'])
 
+        ## Game mechanic
         if action_a == action_b == "defect":
-            return_a, return_b = PENALTY, PENALTY
+            return_a, return_b = self.PENALTY, self.PENALTY
         elif action_a == "defect" and action_b == "cooperate":
-            return_a = TEMPTATION
-            return_b = SUCKER
+            return_a = self.TEMPTATION
+            return_b = self.SUCKER
         elif action_a == "cooperate" and action_b == "defect":
-            return_a = SUCKER
-            return_b = TEMPTATION
+            return_a = self.SUCKER
+            return_b = self.TEMPTATION
         elif (action_a and action_b) == "cooperate":
-            return_a, return_b =  REWARD, REWARD
+            return_a, return_b =  self.REWARD, self.REWARD
         else:
             assert False # "Error, impossible move"
 
-        self.prisoner_a.actions.append(action_a)
-        self.prisoner_b.actions.append(action_b)
-
-        # Give rewards/punishment
-        self.prisoner_a.rewards.append(return_a)
-        self.prisoner_b.rewards.append(return_b)
-
-        self.prisoner_a.punish(reward=return_a, action=action_a)
-        self.prisoner_b.punish(reward=return_b, action=action_b)
-
+        # state = history
+        # state, action, reward, new_state
+        self.move_id += 1
         self.data['id'].append(self.move_id)
         self.data['A'].append(return_a)
         self.data['B'].append(return_b)
 
+        # history, action, return_a, history
+        self.prisoner_a.punish(state=self.data['A'][:-1], action=action_a, reward=return_a, new_state=self.data['A'])
+        self.prisoner_b.punish(state=self.data['B'][:-1], action=action_b, reward=return_b, new_state=self.data['B'])
+        
+        
 
 # Fix later.
 def robintournement(numberofgames=1000, *strategies):
@@ -136,12 +131,5 @@ def tocsv(data, name="default.csv"):
         writer.writerows(data)
     print("Data exported to CSV")
 
-def display(data):
-    plt.plot(data,'r')
-    plt.show()
-
-def main(argv="output.csv"):
-    pass
-
 if __name__ == '__main__':
-    main()
+    pass

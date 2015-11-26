@@ -12,5 +12,5 @@ class Prisoner(object):
     def strategy(self, **context):
         pass
 
-    def punish(self, reward, **context):
+    def punish(self, **context):
         pass
