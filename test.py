@@ -57,8 +57,8 @@ def ml_vs_ml_iterate():
 
 def deepqlearning_vs_titfortat_non_iterate():
     print("Start a non-iterated game between DeepQLearning and Titfortat")
-    agent_a = DeepQLearnerAdaptater(2, 1, decay=0.0, learning_rate=0.02)
-    prisoner_a = MachineLearning("A", agent=agent)
+    agent_a = DeepQLearnerAdaptater(2, 1, decay=0.0, learning_rate=0.02, scope="dvt_ni_a")
+    prisoner_a = MachineLearning("A", agent=agent_a)
     prisoner_b = Titfortat("B")
     game = Game(prisoner_a, prisoner_b)
     game.play(10000)
@@ -66,11 +66,23 @@ def deepqlearning_vs_titfortat_non_iterate():
     print('prisoner_a:', Counter(prisoner_a.actions[-1000:]))
     print('prisoner_b:', Counter(prisoner_b.actions[-1000:]))
 
-def deepqlearning_vs_titfortat_non_iterate():
-    print("Start an non-iterated game between DeepQLearning and Titfortat")
-    agent_a = DeepQLearnerAdaptater(2, 1, decay=0.0, learning_rate=0.02)
-    prisoner_a = MachineLearning("A", agent=agent)
+def deepqlearning_vs_titfortat_iterate():
+    print("Start an iterated game between DeepQLearning and Titfortat")
+    agent_a = DeepQLearnerAdaptater(2, 1, decay=0.9, learning_rate=0.02, scope="dvt_i_a")
+    prisoner_a = MachineLearning("A", agent=agent_a)
     prisoner_b = Titfortat("B")
+    game = Game(prisoner_a, prisoner_b)
+    game.play(10000)
+    print('Last 1000 moves:')
+    print('prisoner_a:', Counter(prisoner_a.actions[-1000:]))
+    print('prisoner_b:', Counter(prisoner_b.actions[-1000:]))
+
+def deepqlearning_vs_deepqlearning_non_iterate():
+    print("Start an non-iterated game between DeepQLearning and DeepQLearning")
+    agent_a = DeepQLearnerAdaptater(2, 1, decay=0.0, learning_rate=0.02, scope="dvd_ni_a")
+    prisoner_a = MachineLearning("A", agent=agent_a)
+    agent_b = DeepQLearnerAdaptater(2, 1, decay=0.0, learning_rate=0.02, scope="dvd_ni_b")
+    prisoner_b = MachineLearning("B", agent=agent_b)
     game = Game(prisoner_a, prisoner_b)
     game.play(10000)
     print('Last 1000 moves:')
@@ -79,9 +91,10 @@ def deepqlearning_vs_titfortat_non_iterate():
 
 def deepqlearning_vs_deepqlearning_iterate():
     print("Start an _iterated_ game between DeepQLearning and Titfortat")
-    agent_a = DeepQLearnerAdaptater(2, 1, decay=0.9, learning_rate=0.02)
-    prisoner_a = MachineLearning("A", agent=agent)
-    prisoner_b = Titfortat("B")
+    agent_a = DeepQLearnerAdaptater(2, 1, decay=0.9, learning_rate=0.02, scope="dvd_i_a")
+    prisoner_a = MachineLearning("A", agent=agent_a)
+    agent_b = DeepQLearnerAdaptater(2, 1, decay=0.9, learning_rate=0.02, scope="dvd_i_b")
+    prisoner_b = MachineLearning("B", agent=agent_b)
     game = Game(prisoner_a, prisoner_b)
     game.play(10000)
     print('Last 1000 moves:')
@@ -89,8 +102,12 @@ def deepqlearning_vs_deepqlearning_iterate():
     print('prisoner_b:', Counter(prisoner_b.actions[-1000:]))
 
 
+
 def main():
-    pass
+    deepqlearning_vs_titfortat_non_iterate()
+    deepqlearning_vs_titfortat_iterate()
+    deepqlearning_vs_deepqlearning_non_iterate()
+    deepqlearning_vs_deepqlearning_iterate()
 
 if __name__ == '__main__':
     main()
