@@ -20,7 +20,10 @@ class DiscreteDeepQ(object):
                        max_experience=30000,
                        target_network_update_rate=0.01,
                        summary_writer=None):
-        """Initialized the Deepq object.
+        """Warning, this code was copied from 
+        https://github.com/nivwusquorum/tensorflow-deepq/blob/master/tf_rl/controller/discrete_deepq.py
+
+        Initialized the Deepq object.
         Based on:
             https://www.cs.toronto.edu/~vmnih/docs/dqn.pdf
         Parameters
