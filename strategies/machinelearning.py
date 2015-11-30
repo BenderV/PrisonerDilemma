@@ -1,116 +1,91 @@
-import random
 from .prisoner import Prisoner
 import math
+from .agents._models import MLP
+from .agents.deepqlearning import DiscreteDeepQ
+from .agents.qlearning import QLearning
+import tensorflow as tf
+import random
+import numpy as np
 
-"""
-from sknn.mlp import Classifier, Layer
-nn = Classifier(
-    layers=[
-        Layer("Maxout", units=100, pieces=2),
-        Layer("Softmax")],
-    learning_rate=0.001,
-    n_iter=25)
-"""
+# https://github.com/nivwusquorum/tensorflow-deepq/blob/master/notebooks/game_memory.ipynb
+# https://github.com/nivwusquorum/tensorflow-deepq
+
+
 ACTIONS = [('defect'), ('cooperate')] # cooperate or defect
 
-def unexp(x):
-   return math.exp(-x)
+class DeepQLearnerAdaptater(object):
+    def __init__(self, num_actions, 
+                       observation_size, 
+                       decay=0.9, 
+                       learning_rate=0.1, 
+                       exploration_random_prob=0.2,
+                       exploitation_random_prob=0.0,
+                       exploration_period=8000,
+                       store_every_nth=5,
+                       train_every_nth=5,
+                       minibatch_size=32,
+                       max_experience=30000,
+                       target_network_update_rate=0.01,
+                       scope="MLP"):
 
-# 1. read image
-# 2. generate state
-# 3. choose which action in gonna lead to be the best next state
-# 4. 
-# class nnAdapteur(object):
-#     """docstring for nnAdapteur"""
-#     def __init__(self, arg):
-#         super(nnAdapteur, self).__init__()
-#         self.arg = arg
+        self.observation_size = observation_size
+        self.num_actions = num_actions
 
+        optimizer = tf.train.RMSPropOptimizer(learning_rate=learning_rate, decay=decay)
+        self.brain = MLP([observation_size,], [num_actions], [tf.identity], scope=scope)
+        self.session = tf.InteractiveSession()
 
-# class DeepQLearning(object):
-#     """DeepQLearning is a QLearning backed by a neural network"""
-#     def __init__(self, arg):
-#         super(QneuralLearning, self).__init__()
-#         self.values = {}
-#         self.lrate = 0.4 # step size, for now, we always learn a bit on everything.
-#         self.gamma = 0 # discount factor, tell if we care about the future.
-#         self.epsilon = 0.1
+        self.deepqlearning = DiscreteDeepQ(
+           observation_size=observation_size,
+           num_actions=num_actions,
+           observation_to_actions=self.brain,
+           optimizer=optimizer,
+           session=self.session,
+           exploration_random_prob=float(exploration_random_prob),
+           exploitation_random_prob=float(exploitation_random_prob),
+           exploration_period=exploration_period,
+           store_every_nth=store_every_nth,
+           train_every_nth=train_every_nth,
+           minibatch_size=minibatch_size,
+           discount_rate=decay,
+           max_experience=max_experience,
+           target_network_update_rate=target_network_update_rate,
+        )
+        self.session.run(tf.initialize_all_variables())
 
-#     def learn(self, state, action, new_state, reward):
-#         # We need to train the neural network to determine wheter a state is good.
-#         # This also integrate wheter a state actions are available.
-#         action_evaluation = nn.predict(state + action)
-#         # qmax = state_evaluation = max(state result of actions)
-#         qmax = max([nn.predict(new_state + action) for action in ACTIONS]) # just because new_state = action
-        
-#         stateaction_value = reward + self.gamma * qmax  - action_evaluation
-#         nn.fit(state + action, stateaction_value)
-   
-#     def choose(self, state, actions):
-#         # => should be changed to random nn.
-#         if not state: # if we don't have any state, randomly do an action.
-#             return random.choice(actions)
-
-#         if random.random() < self.epsilon: # We explore
-#             return random.choice(actions)
-#         # else, We try to exploit
-
-#         # Select best options...
-#         best_action = max(actions, key=lambda action: nn.predict(state, action))
-#         return best_action
-
-  
-class QLearning(object):
-    """docstring for QLearning"""
-    def __init__(self):
-      super(QLearning, self).__init__()
-      self.values = {}
-      self.lrate = 0.22 # step size, for now, we always learn a bit on everything.
-      self.gamma = 0 # discount factor
-      self.id = 0
-      self.epsilon = lambda x : 0.1 if x < 7000 else 0
+    def __del__(self):
+        self.session.close()
 
     def learn(self, state, action, reward, new_state):
-        state = state[-1] # We take only the last episode
-        new_state = new_state[-1]
+        state = np.array(state[-self.observation_size:])
+        new_state = np.array(new_state[-self.observation_size:])
 
-        old_value = self.values.get((state, action), 0.5) # try to get, otherwise init at 0.5
-        lrate = self.lrate
+        self.deepqlearning.store(state, action, reward, new_state)
+        self.deepqlearning.training_step()
 
-        qmax = max([self.values.get((new_state, action), 0.5) for action in ACTIONS])
-        
-        new_value = old_value + lrate * (reward + self.gamma * qmax  - old_value)
-        self.values[state, action] = new_value
-
-
-    def choose(self, state, actions):
+    def choose(self, state):
+        state = np.array(state[-self.observation_size:])
         if not state: # if we don't have any state, randomly do an action.
-            return random.choice(actions)
-        state = state[-1] # We take only the last episode
-
-        self.id += 1
-        if random.random() < self.epsilon(self.id): # We explore
-            return random.choice(actions)
-
-        return max(ACTIONS, key=lambda action: self.values.get((state, action), 0.5))
+            return random.choice(range(self.num_actions))
+        return self.deepqlearning.action(observation=state)
 
 class MachineLearning(Prisoner):
     """implement the simplest ML algorithm possible
     Non iterative version of the game
     It should learn that he should always defect"""
-    def __init__(self, arg):
-        super(MachineLearning, self).__init__(arg)
-        self.qlearning = QLearning()
+    def __init__(self, name, agent=False): # False => automatically generated
+        super(MachineLearning, self).__init__(name)
+        self.agent = agent if agent else QLearning(2)
         self.last_action = None
     
+    def punish(self, state, action, reward, new_state):
+        action = ACTIONS.index(action)
+        if self.last_action:
+            self.agent.learn(state=state, action=action, reward=reward, new_state=new_state)
+        self.last_action = True
+
     def strategy(self, state, **context):
-        action = self.qlearning.choose(state=state, actions=ACTIONS)
+        action = ACTIONS[self.agent.choose(state=state)]
         self.actions.append(action)
         return action
-
-    def punish(self, state, action, reward, new_state):
-        if self.last_action:
-            self.qlearning.learn(state=state, action=action, reward=reward, new_state=new_state)
-        self.last_action = action
-
 

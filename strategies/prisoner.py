@@ -3,7 +3,7 @@
 
 class Prisoner(object):
     """docstring for Prisoner"""
-    def __init__(self, name, strategy = "cooperate"):
+    def __init__(self, name):
         self.name = name
         self.history = [] # history of action ?
         self.rewards = []
