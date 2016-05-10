@@ -1,6 +1,6 @@
 ### Prisoner's dilemma : Machine Learning bots to solve the Prisoner's dilemma [help needed]
 
-Python implementation of the Prisonner's dilemma with the classicals strategies, and two machine 
+Python implementation of the Prisoner's dilemma with the classical strategies, and two machine 
 learning agents: QLearning and DeepQLearning.
 
 ### Why
